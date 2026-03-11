@@ -31,6 +31,21 @@ An eInk-optimized ebook reader for Linux, forked from [Lector](https://github.co
 
 ## Install
 
+### Using the installer (recommended)
+
+```bash
+sudo bash installer.sh
+```
+
+This handles everything: apt packages, pip packages (PyMuPDF), app files to `/opt/eink-reader`, launcher in `/usr/local/bin/eink-reader`, desktop entry, and icon.
+
+To uninstall:
+```bash
+sudo bash installer.sh --uninstall
+```
+
+### Manual install
+
 ```bash
 # Install system dependencies
 sudo apt install python3-pyqt5 python3-lxml python3-bs4
@@ -48,7 +63,7 @@ pip3 install .
 ## Usage
 
 1. Start Tinta4PlusU and enable the eInk display
-2. Launch the reader: `python3 -m lector`
+2. Launch the reader: `eink-reader` (or `python3 -m lector` if running from source)
 3. Add books to the library (drag & drop or File > Add)
 4. Open a book — it opens in **page mode** by default
 5. Navigate with **Up/Down arrows**, **mouse wheel**, or **Left/Right arrows** (chapter change)
