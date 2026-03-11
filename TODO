@@ -1,0 +1,142 @@
+TODO
+    General:
+        ✓ Internationalization
+        ✓ Application icon
+        ✓ .desktop file
+        ✓ Shift to logging instead of print statements
+        Flatpak and AppImage support
+    Options:
+        ✓ Automatic library management
+            ✓ Recursive file addition
+            ✓ Auto deletion
+        ✓ Remember files
+        ✓ Check files (hashes) upon restart
+        ✓ Draw shadows
+        ✓ Perform culling
+    Library:
+        ✓ sqlite3 for cover images cache
+        ✓ sqlite3 for storing metadata
+        ✓ Drop down for SortBy
+        ✓ Image delegates
+        ✓ Image reflow
+        ✓ Search bar in toolbar
+        ✓ Shift focus to the tab that has the book open
+        ✓ Tie file deletion and tab closing to model updates
+        ✓ Create separate thread for parser - Show progress in main window
+        ✓ Memory management
+        ✓ Mass tagging
+        ✓ Add capability to sort by new
+        ✓ Table view
+        ✓ Context menu: Cache, Read, Edit database, delete, Mark read/unread
+        ✓ Information dialog widget
+        ✓ Allow editing of database data through the UI + for Bookmarks
+        ✓ Include (action) icons with the applications
+        ✓ Drag and drop support for the library
+        ✓ Tab reordering
+        Additional Settings:
+           ✓ Create covers for books without them - VERY SLOW
+        Set focus to newly added file
+    Reading:
+        ✓ Navbar
+        ✓ Drop down for TOC
+        ✓ Treeview navigation for TOC
+        ✓ Override the keypress event of the textedit
+        ✓ Use format* icons for toolbar buttons
+        ✓ Implement book view settings with a(nother) toolbar
+        ✓ Substitute textedit for another widget
+        ✓ Theming
+        ✓ Keep fontsize and margins consistent - Let page increase in length
+        ✓ Fullscreening
+        ✓ Remember open tabs
+        ✓ Selectable background color for QGraphicsView
+        ✓ View modes for QGraphicsView
+        ✓ View and hide toolbar actions in a list
+        ✓ Line spacing
+        ✓ Record progress
+        ✓ Text alignment
+        ✓ Background color
+        ✓ Bookmarks
+            ✓ Creation
+            ✓ Navigation
+            ✓ Editing: Name
+            ✓ Deletion
+        ✓ Cache next and previous images
+        ✓ Set context menu for definitions and the like
+        ✓ Paragraph indentation
+        ✓ Comic view keyboard shortcuts
+        ✓ Comic view context menu
+        ✓ Image rotation
+        ✓ Make the bookmark dock float over the reading area
+        ✓ Spacebar should not cut off lines at the top
+        ✓ Track open bookmark windows so they can be closed quickly at exit
+        ✓ Search document using QTextCursor
+        ✓ Double page / column view
+            ✓ For comics
+                Caching is currently non functional
+        Annotations
+            ✓ Text
+            ✓ Disable buttons for annotations, search in images
+        Adjust key navigation according to viewport dimensions
+    Filetypes:
+        ✓ pdf support
+            ✓ Parse TOC
+        ✓ epub support
+            ✓ Homegrown solution please
+        ✓ cbz, cbr support
+            ✓ Keep font settings enabled but only for background color
+            ✓ Double page view
+            ✓ Manga mode
+        ✓ mobi, azw support
+            Limit the extra files produced by KindleUnpack
+                Have them save to memory
+        ✓ fb2 support
+            ✓ Images need to show up in their placeholders
+        ✓ djvu support
+        ✓ markdown support
+    Other:
+        ✓ Define every widget in code
+    Bugs:
+        Deselecting all directories in the settings dialog also filters out manually added books
+        Bookmark name for a page that's not on the TOC and has nothing before
+        Screen position still keeps jumping when inside a paragraph
+        Better recursion needed for fb2 toc
+        Search results should ignore punctuation
+        Keep text size for annotations
+        Drag and drop is acting out
+        Search and annotation buttons become visible when font settings are hidden in comics
+
+    Secondary:
+        Auto switch between flow and single page mode
+        Text to speech
+        Definitions dialog needs to respond to escape
+        Zoom slider for comics / library
+        Tab tooltip
+        Additional Settings:
+            Find definitions on Google
+            Disable progressbar - 20% book addition speed improvement
+            Disable cover loading when reading - Saves ~2M / book
+        Special formatting for each chapter's title
+        Signal end of chapter with some text
+        Graphical themes
+        Change focus rectangle dimensions
+        Universal Ctrl + Tab
+        Allow tabs to detach and form their own windows
+        Goodreads API: Ratings, Read, Recommendations
+        Get ISBN using python-isbnlib
+        Use embedded fonts + CSS
+        txt, doc, chm support
+        Include icons for filetype emblems
+        Comic view modes
+            Continuous paging
+        Ignore a / the / numbers for sorting purposes
+        ? Add only one file type if multiple are present
+        ? Create emblem per filetype
+        In application notifications
+            Notification in case the filter is filtering out all files with no option in place
+        Option to fit images to viewport
+
+    Need help with:
+        Double page view for books
+        Scrolling: Smooth / By Line
+        Annotation preview in listView
+        Pagination
