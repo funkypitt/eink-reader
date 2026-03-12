@@ -168,7 +168,7 @@ class BackGroundCacheRefill(QtCore.QThread):
                 pixmap.loadFromData(page_data)
 
             elif self.filetype == 'pdf':
-                page_data = self.book.loadPage(current_page)
+                page_data = self.book.load_page(current_page)
                 pixmap = render_pdf_page(page_data)
 
             elif self.filetype == 'djvu':

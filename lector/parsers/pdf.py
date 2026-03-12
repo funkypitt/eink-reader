@@ -41,7 +41,7 @@ class ParsePDF:
         creation_date = self.book.metadata['creationDate']
         try:
             year = creation_date.split(':')[1][:4]
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, IndexError):
             year = 9999
 
         isbn = None
@@ -53,7 +53,7 @@ class ParsePDF:
         # This is a little roundabout for the cover
         # and I'm sure it's taking a performance hit
         # But it is simple. So there's that.
-        cover_page = self.book.loadPage(0)
+        cover_page = self.book.load_page(0)
         # Disabling scaling gets the covers much faster
         cover = render_pdf_page(cover_page, True)
 
@@ -62,10 +62,10 @@ class ParsePDF:
         return Metadata(title, author, year, isbn, tags, cover)
 
     def generate_content(self):
-        content = list(range(self.book.pageCount))
-        toc = self.book.getToC()
+        content = list(range(self.book.page_count))
+        toc = self.book.get_toc()
         if not toc:
-            toc = [(1, f'Page {i + 1}', i + 1) for i in range(self.book.pageCount)]
+            toc = [(1, f'Page {i + 1}', i + 1) for i in range(self.book.page_count)]
 
         # Return toc, content, images_only
         return toc, content, True
@@ -80,7 +80,7 @@ def render_pdf_page(page_data, for_cover=False):
     if for_cover:
         zoom_matrix = fitz.Matrix(1, 1)
 
-    pagePixmap = page_data.getPixmap(
+    pagePixmap = page_data.get_pixmap(
         matrix=zoom_matrix,
         alpha=False)  # Sets background to White
     imageFormat = QtGui.QImage.Format_RGB888  # Set to Format_RGB888 if alpha

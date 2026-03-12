@@ -103,7 +103,7 @@ class PliantQGraphicsView(QtWidgets.QGraphicsView):
                     pixmap.loadFromData(page_data)
 
                 elif self.filetype == 'pdf':
-                    page_data = self.book.loadPage(page)
+                    page_data = self.book.load_page(page)
                     pixmap = render_pdf_page(page_data)
 
                 elif self.filetype == 'djvu':

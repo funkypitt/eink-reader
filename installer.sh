@@ -76,7 +76,7 @@ check_root() {
 install_deps() {
     step "Installing system dependencies"
 
-    local pkgs="python3 python3-pyqt5 python3-lxml python3-bs4"
+    local pkgs="python3 python3-pyqt5 python3-lxml python3-bs4 python3-xmltodict"
 
     if ! apt-get update -qq >> "$LOG_FILE" 2>&1; then
         error "apt-get update failed. Check your internet connection and sources."
@@ -117,7 +117,7 @@ check_deps() {
     if ! command -v python3 &>/dev/null; then
         missing+=("python3 (apt)")
     else
-        for mod_pkg in "PyQt5:python3-pyqt5" "lxml:python3-lxml" "bs4:python3-bs4" "fitz:pymupdf (pip3)"; do
+        for mod_pkg in "PyQt5:python3-pyqt5" "lxml:python3-lxml" "bs4:python3-bs4" "xmltodict:python3-xmltodict" "fitz:pymupdf (pip3)"; do
             local mod="${mod_pkg%%:*}"
             local pkg="${mod_pkg##*:}"
             if ! python3 -c "import $mod" 2>/dev/null; then
