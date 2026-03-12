@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 SOCKET_PATH = '/tmp/tinta4plusu.sock'
 REFRESH_TIMEOUT = 2.0  # seconds
+REFRESH_INTERVAL = 10  # trigger ghost refresh every N page turns
+
+_page_turn_count = 0
 
 
 def trigger_eink_refresh(socket_path=SOCKET_PATH):
@@ -43,6 +46,10 @@ def trigger_eink_refresh(socket_path=SOCKET_PATH):
 
 
 def refresh_eink_async():
-    """Trigger eInk refresh in a background thread (non-blocking)."""
+    """Trigger eInk refresh in a background thread every REFRESH_INTERVAL page turns."""
+    global _page_turn_count
+    _page_turn_count += 1
+    if _page_turn_count % REFRESH_INTERVAL != 0:
+        return
     thread = threading.Thread(target=trigger_eink_refresh, daemon=True)
     thread.start()
