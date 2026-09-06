@@ -590,31 +590,39 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
         self.generate_page_positions()
         self.set_page(cursorTop)
 
+    def page_height(self):
+        return self.document().pageSize().height()
+
+    def scroll_to_page(self, page_number):
+        # With a page size set, Qt lays the pages out one under the other, exactly
+        # page_height apart, and never lets a line straddle a page boundary. Scrolling
+        # to an exact multiple of the page height therefore shows whole lines only:
+        # no line cut by the bottom edge and repeated at the top of the next page,
+        # which is what cursor-based scrolling (ensureCursorVisible) used to allow.
+        height = self.page_height()
+        if height <= 0:
+            return
+        self.verticalScrollBar().setValue(int(round(page_number * height)))
+
     def generate_page_positions(self):
-        self.verticalScrollBar().setValue(0)
-
-        cursorEnd = QtGui.QTextCursor(self.document())
-        cursorEnd.movePosition(QtGui.QTextCursor.End)
-
+        # One (first character, first character of the next page) pair per page,
+        # read from the document layout itself rather than by probing the viewport.
         self.page_cursors = []
+        layout = self.document().documentLayout()
+        height = self.page_height()
+        margin = self.document().documentMargin()
+        page_count = max(1, self.document().pageCount())
 
-        while True:
-            cursorTopLeft = self.cursorForPosition(
-                self.viewport().rect().topLeft())
-            cursorBottomLeft = self.cursorForPosition(
-                self.viewport().rect().bottomLeft())
-            cursorBottomRight = self.cursorForPosition(
-                self.viewport().rect().bottomRight())
+        starts = []
+        for n in range(page_count):
+            probe = QtCore.QPointF(margin + 1, n * height + margin + 1)
+            position = layout.hitTest(probe, QtCore.Qt.FuzzyHit)
+            starts.append(max(0, position))
 
-            self.page_cursors.append(
-                (cursorTopLeft.position(), cursorBottomRight.position()))
-
-            self.move_to_cursor(cursorBottomRight)
-
-            # TODO
-            # See if this requires a failsafe per number of iterations
-            if cursorEnd.position() == cursorBottomRight.position():
-                break
+        last = max(0, self.document().characterCount() - 1)
+        for n, start in enumerate(starts):
+            end = starts[n + 1] if n + 1 < len(starts) else last + 1
+            self.page_cursors.append((start, end))
 
     def set_page(self, originalCursor):
         required_position = originalCursor.position()
@@ -622,12 +630,14 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
         if self.text_mode == 'flow':
             page_start = required_position
 
-        if self.text_mode == 'singlePage':
+        if self.text_mode in ('singlePage', 'doublePage'):
+            self.page_number = 0
             for count, i in enumerate(self.page_cursors):
                 if i[0] <= required_position < i[1]:
-                    page_start = i[0]
                     self.page_number = count
                     break
+            self.scroll_to_page(self.page_number)
+            return
 
         cursorGoTo = QtGui.QTextCursor(self.document())
         cursorGoTo.setPosition(page_start)
@@ -641,14 +651,9 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
             self.common_functions.change_chapter(direction, skip_refresh=True)
             self.create_pages()
         else:
-            try:
-                page_start = self.page_cursors[self.page_number][0]
-                cursorGoTo = QtGui.QTextCursor(self.document())
-                cursorGoTo.setPosition(page_start)
-                self.move_to_cursor(cursorGoTo)
-                self.set_top_line_cleanly()
-            except IndexError:
+            if self.page_number >= len(self.page_cursors):
                 return
+            self.scroll_to_page(self.page_number)
 
         refresh_eink_async()
 
@@ -869,7 +874,7 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
             self.create_pages('singlePage')
 
         if action == doublePageAction:
-            self.create_pages('doublePages')
+            self.create_pages('doublePage')
 
         if action == addBookMarkAction:
             self.parent.sideDock.bookmarks.add_bookmark(cursor_at_mouse.position())
