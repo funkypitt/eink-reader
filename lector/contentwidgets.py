@@ -353,6 +353,8 @@ class PliantQGraphicsView(QtWidgets.QGraphicsView):
         # This allows to filter out scrolling
         # from a normal mouseEvent
         QtWidgets.QGraphicsView.mouseMoveEvent(self, event)
+        if event.source() != QtCore.Qt.MouseEventNotSynthesized or event.buttons():
+            return  # a finger (or a drag): the nav bar is shown by a centre tap instead
         if not self.mousePosition:
             self.mousePosition = event.pos()
             return
@@ -1000,6 +1002,8 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
         # from a normal mouseEvent
 
         QtWidgets.QTextBrowser.mouseMoveEvent(self, event)
+        if event.source() != QtCore.Qt.MouseEventNotSynthesized or event.buttons():
+            return  # a finger (or a drag): the nav bar is shown by a centre tap instead
         if not self.mousePosition:
             self.mousePosition = event.pos()
             return

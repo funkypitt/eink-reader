@@ -561,7 +561,12 @@ class PliantNavBarWidget(QtWidgets.QDockWidget):
 
         background = self.main_window.settings['dialog_background']
         self.setStyleSheet(
-            "QDockWidget {{background-color: {0}}}".format(background.name()))
+            "QDockWidget {{ background-color: {0}; }}"
+            "QPushButton {{ border: none; border-radius: 12px; }}"
+            "QPushButton:pressed {{ background-color: rgba(127, 127, 127, 60); }}"
+            "QComboBox {{ border: 1px solid rgba(127, 127, 127, 90); border-radius: 10px;"
+            " padding: 4px 12px; background: transparent; font-size: 15px; }}"
+            "QComboBox::drop-down {{ border: none; width: 36px; }}".format(background.name()))
 
         images = self.main_window.QImageFactory
 

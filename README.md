@@ -25,7 +25,7 @@ Made for the eInk in portrait tablet mode, where there is no keyboard:
 
 Page turns are instantaneous (no double-tap delay on the edges). Manga mode mirrors the edge zones. Gestures never interfere with text selection, annotation placement or the right-click menu, and they work with a mouse too.
 
-The chrome is sized for fingers as well: 48 px toolbar buttons and tabs, large menus and combo boxes, finger scrolling with inertia in the library and tables of contents, **one tap opens a book** in the library, and the navigation bar that appears on a centre tap is a full-width strip with *library · bookmark · previous / chapter / next · fullscreen*. Set `EINK_READER_TOUCH_UI=0` to get the compact desktop sizing back.
+The chrome is sized for fingers as well: 48 px toolbar buttons and tabs, large menus and combo boxes, finger scrolling with inertia in the library and tables of contents, **one tap opens a book** in the library, and the navigation bar that appears on a centre tap is a full-width strip with *library · bookmark · previous / chapter / next · fullscreen*. Set `EINK_READER_TOUCH_UI=0` to get the compact desktop sizing back. If taps do not behave as expected, run with `EINK_READER_TOUCH_DEBUG=1` and look at `~/.local/share/Lector/Lector.log`: every tap/swipe decision is logged with its position, distance and timing.
 
 ## Supported formats
 
