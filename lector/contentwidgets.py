@@ -37,6 +37,7 @@ from lector.rarfile import rarfile
 from lector.threaded import BackGroundCacheRefill
 from lector.annotations import AnnotationPlacement
 from lector.eink_refresh import refresh_eink_async
+from lector.touch_nav import TouchNavigator
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,38 @@ class PliantQGraphicsView(QtWidgets.QGraphicsView):
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(
             self.generate_graphicsview_context_menu)
+
+        # Touch: edge taps / swipes turn pages, centre tap shows the nav bar,
+        # centre double tap toggles fullscreen. Manga mode mirrors the zones.
+        self.touch_nav = TouchNavigator(
+            self, self.page_forward, self.page_backward,
+            on_centre_tap=self.show_nav_bar,
+            on_double_tap=self.toggle_fullscreen,
+            right_to_left=lambda: bool(self.main_window.settings['manga_mode']))
+
+    def page_forward(self):
+        """Next page: scroll if the (zoomed) page is taller than the view, else next page."""
+        bar = self.verticalScrollBar()
+        if bar.value() < bar.maximum():
+            step = bar.pageStep() or (bar.maximum() // self.main_window.settings['large_increment'])
+            bar.setValue(min(bar.maximum(), bar.value() + step))
+        else:
+            self.common_functions.change_chapter(1, True)
+
+    def page_backward(self):
+        bar = self.verticalScrollBar()
+        if bar.value() > 0:
+            step = bar.pageStep() or (bar.maximum() // self.main_window.settings['large_increment'])
+            bar.setValue(max(0, bar.value() - step))
+        else:
+            self.common_functions.change_chapter(-1, True)
+
+    def show_nav_bar(self):
+        self.parent.navBar.show()
+        self.parent.mouseHideTimer.start(2000)
+
+    def toggle_fullscreen(self):
+        self.parent.go_fullscreen()  # toggles: exits when already fullscreen
 
     def loadImage(self, current_page):
         all_pages = self.parent.metadata['content']
@@ -499,6 +532,47 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
         self.at_end = False
         self.page_cursors = []
         self.page_number = 0
+
+        # Touch navigation (see PliantQGraphicsView); stays out of the way of
+        # text selection and annotation placement.
+        self.touch_nav = TouchNavigator(
+            self, self.page_forward, self.page_backward,
+            on_centre_tap=self.show_nav_bar,
+            on_double_tap=self.toggle_fullscreen,
+            enabled=lambda: not self.annotation_mode and not self.textCursor().hasSelection())
+
+    def page_forward(self):
+        if self.text_mode in ('singlePage', 'doublePage'):
+            self.turn_page(1)
+            self.record_position()
+            return
+        bar = self.verticalScrollBar()
+        if bar.value() < bar.maximum():
+            bar.setValue(min(bar.maximum(), bar.value() + bar.pageStep()))
+            self.set_top_line_cleanly()
+        else:
+            self.common_functions.change_chapter(1, True)
+        self.record_position()
+
+    def page_backward(self):
+        if self.text_mode in ('singlePage', 'doublePage'):
+            self.turn_page(-1)
+            self.record_position()
+            return
+        bar = self.verticalScrollBar()
+        if bar.value() > 0:
+            bar.setValue(max(0, bar.value() - bar.pageStep()))
+            self.set_top_line_cleanly()
+        else:
+            self.common_functions.change_chapter(-1, False)
+        self.record_position()
+
+    def show_nav_bar(self):
+        self.parent.navBar.show()
+        self.parent.mouseHideTimer.start(2000)
+
+    def toggle_fullscreen(self):
+        self.parent.go_fullscreen()  # toggles: exits when already fullscreen
 
     def wheelEvent(self, event):
         if self.text_mode in ('singlePage', 'doublePage'):

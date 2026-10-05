@@ -6,7 +6,22 @@ An eInk-optimized ebook reader for Linux, forked from [Lector](https://github.co
 
 - **Page mode only** — no scroll mode, only clean page turns (single page or double page)
 - **Automatic eInk refresh** — after every page turn, sends a "clear ghosts" command to the Tinta4PlusU helper daemon via Unix socket, eliminating ghosting artifacts
+- **Touch navigation** — Kindle-style tap zones and swipes for page turns, centre double-tap for fullscreen (see below)
 - **Works when Tinta4PlusU is running** — if the helper daemon isn't active, the reader works normally without refresh
+
+## Touch navigation ("à la Kindle")
+
+Made for the eInk in portrait tablet mode, where there is no keyboard:
+
+| Gesture | Action |
+|---------|--------|
+| Tap the right 30 % of the page | Next page |
+| Tap the left 30 % of the page | Previous page |
+| Swipe left / right | Next / previous page |
+| Tap the centre | Show the navigation bar for a moment |
+| Double-tap the centre | Toggle fullscreen (same as **F** / **Esc**) |
+
+Page turns are instantaneous (no double-tap delay on the edges). Manga mode mirrors the edge zones. Gestures never interfere with text selection, annotation placement or the right-click menu, and they work with a mouse too.
 
 ## Supported formats
 
