@@ -367,11 +367,27 @@ class MainUI(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
 
         # Open input files if specified
         cl_parser = QtCore.QCommandLineParser()
+        fullscreen_option = QtCore.QCommandLineOption(
+            ['fullscreen'], 'Open the current book fullscreen (used by Tinta4PlusU reader mode)')
+        cl_parser.addOption(fullscreen_option)
+        cl_parser.addHelpOption()
         cl_parser.process(QtWidgets.qApp)
         my_args = cl_parser.positionalArguments()
         if my_args:
             file_list = [QtCore.QFileInfo(i).absoluteFilePath() for i in my_args]
             self.process_post_hoc_files(file_list, True)
+
+        if cl_parser.isSet(fullscreen_option):
+            # Let the book tab finish laying out before fullscreening it
+            QtCore.QTimer.singleShot(700, self.fullscreen_current_book)
+
+    def fullscreen_current_book(self):
+        """Fullscreen the current book tab (no-op on the library tab)."""
+        current_tab = self.tabWidget.currentWidget()
+        if current_tab is None or getattr(current_tab, 'is_library', True):
+            return
+        if not current_tab.is_fullscreen:
+            current_tab.go_fullscreen()
 
     def process_post_hoc_files(self, file_list, open_files_after_processing):
         # Takes care of both dragged and dropped files

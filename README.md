@@ -75,6 +75,14 @@ python3 -m lector
 pip3 install .
 ```
 
+### Command line
+
+```bash
+eink-reader book.pdf           # open a book
+eink-reader --fullscreen       # reopen the last books, current one fullscreen
+                               # (what Tinta4PlusU's tablet reader mode launches)
+```
+
 ## Usage
 
 1. Start Tinta4PlusU and enable the eInk display
