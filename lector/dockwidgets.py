@@ -16,10 +16,14 @@
 
 import uuid
 
+import logging
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from lector.models import BookmarkProxyModel
 from lector.threaded import BackGroundTextSearch
+
+
+logger = logging.getLogger(__name__)
 
 
 class PliantDockWidget(QtWidgets.QDockWidget):
@@ -529,6 +533,18 @@ class PliantLabelWidget(QtWidgets.QLabel):
 
 
 class PliantNavBarWidget(QtWidgets.QDockWidget):
+    """Floating navigation bar shown on a centre tap / mouse move.
+
+    Sized for fingers: a full-width strip along the bottom of the page with
+    previous / table of contents / next, plus bookmark, fullscreen and
+    back-to-library, each at least BUTTON_H tall.
+    """
+
+    BUTTON_H = 64
+    BUTTON_W = 80
+    ICON_PX = 36
+    MARGIN = 24
+
     def __init__(self, main_window, contentView, parent):
         super(PliantNavBarWidget, self).__init__(parent)
         self.main_window = main_window
@@ -541,60 +557,71 @@ class PliantNavBarWidget(QtWidgets.QDockWidget):
         self.animation = QtCore.QPropertyAnimation(self, b'windowOpacity')
         self.animation.setDuration(200)
         self.animation.setStartValue(0)
-        self.animation.setEndValue(.8)
+        self.animation.setEndValue(.92)
 
         background = self.main_window.settings['dialog_background']
         self.setStyleSheet(
             "QDockWidget {{background-color: {0}}}".format(background.name()))
 
-        self.backButton = QtWidgets.QPushButton()
-        self.backButton.setFlat(True)
-        icon = QtGui.QIcon()
-        icon.addPixmap(
-            QtGui.QPixmap(":/images/previous.png"),
-            QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.backButton.setIcon(icon)
-        self.backButton.setIconSize(QtCore.QSize(24, 24))
+        images = self.main_window.QImageFactory
 
-        self.nextButton = QtWidgets.QPushButton()
-        self.nextButton.setFlat(True)
-        icon = QtGui.QIcon()
-        icon.addPixmap(
-            QtGui.QPixmap(":/images/next.png"),
-            QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.nextButton.setIcon(icon)
-        self.nextButton.setIconSize(QtCore.QSize(24, 24))
+        def make_button(icon, tooltip, callback, fallback_text=''):
+            button = QtWidgets.QPushButton()
+            button.setFlat(True)
+            if icon is not None and not icon.isNull():
+                button.setIcon(icon)
+                button.setIconSize(QtCore.QSize(self.ICON_PX, self.ICON_PX))
+            else:
+                button.setText(fallback_text)
+            button.setToolTip(tooltip)
+            button.setFixedSize(self.BUTTON_W, self.BUTTON_H)
+            button.setFocusPolicy(QtCore.Qt.NoFocus)
+            button.clicked.connect(callback)
+            return button
 
-        self.backButton.clicked.connect(lambda: self.button_click(-1))
-        self.nextButton.clicked.connect(lambda: self.button_click(1))
+        prev_icon = QtGui.QIcon()
+        prev_icon.addPixmap(QtGui.QPixmap(":/images/previous.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        next_icon = QtGui.QIcon()
+        next_icon.addPixmap(QtGui.QPixmap(":/images/next.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        self.backButton = make_button(prev_icon, 'Previous', lambda: self.button_click(-1), '<')
+        self.nextButton = make_button(next_icon, 'Next', lambda: self.button_click(1), '>')
+        self.bookmarkButton = make_button(
+            images.get_image('bookmark-new'), 'Add bookmark', self.add_bookmark, 'Bookmark')
+        self.fullscreenButton = make_button(
+            images.get_image('view-fullscreen'), 'Fullscreen on / off', self.toggle_fullscreen, 'Full')
+        self.libraryButton = make_button(
+            images.get_image('view-grid'), 'Back to the library', self.go_to_library, 'Library')
 
         self.tocComboBox = FixedComboBox(self)
+        self.tocComboBox.setMinimumHeight(self.BUTTON_H - 12)
         self.populate_combo_box()
 
         self.navLayout = QtWidgets.QHBoxLayout()
+        self.navLayout.setContentsMargins(12, 8, 12, 8)
+        self.navLayout.setSpacing(8)
+        self.navLayout.addWidget(self.libraryButton)
+        self.navLayout.addWidget(self.bookmarkButton)
+        self.navLayout.addStretch(1)
         self.navLayout.addWidget(self.backButton)
-        self.navLayout.addWidget(self.tocComboBox)
+        self.navLayout.addWidget(self.tocComboBox, 2)
         self.navLayout.addWidget(self.nextButton)
+        self.navLayout.addStretch(1)
+        self.navLayout.addWidget(self.fullscreenButton)
         self.navWidget = QtWidgets.QWidget()
         self.navWidget.setLayout(self.navLayout)
 
         self.setWidget(self.navWidget)
 
     def showEvent(self, event=None):
-        # TODO
-        # See what happens when the size of the viewport is smaller
-        # than the size of the dock
+        viewport_rect = self.contentView.viewport().rect()
+        top_left = self.contentView.mapToGlobal(viewport_rect.topLeft())
+        bottom_right = self.contentView.mapToGlobal(viewport_rect.bottomRight())
 
-        viewport_bottomRight = self.contentView.mapToGlobal(
-            self.contentView.viewport().rect().bottomRight())
-
-        # Dock dimensions
-        desktop_size = QtWidgets.QDesktopWidget().screenGeometry()
-        dock_width = desktop_size.width() // 4.5
-        dock_height = 30
-
-        dock_x = viewport_bottomRight.x() - dock_width - 30
-        dock_y = viewport_bottomRight.y() - 70
+        dock_width = max(360, viewport_rect.width() - 2 * self.MARGIN)
+        dock_height = self.BUTTON_H + 16
+        dock_x = top_left.x() + (viewport_rect.width() - dock_width) // 2
+        dock_y = bottom_right.y() - dock_height - self.MARGIN
 
         self.main_window.active_docks.append(self)
         self.setGeometry(dock_x, dock_y, dock_width, dock_height)
@@ -625,6 +652,11 @@ class PliantNavBarWidget(QtWidgets.QDockWidget):
         tocTree.setRootIsDecorated(False)
         tocTree.setItemsExpandable(False)
         tocTree.expandAll()
+        try:
+            from lector.touch_ui import enable_finger_scroll
+            enable_finger_scroll(tocTree)
+        except Exception:
+            pass
 
         # Set the position of the QComboBox
         self.parent.set_tocBox_index(None, self.tocComboBox)
@@ -636,6 +668,23 @@ class PliantNavBarWidget(QtWidgets.QDockWidget):
     def button_click(self, change):
         self.contentView.common_functions.change_chapter(change)
         self.return_focus()
+
+    def add_bookmark(self):
+        try:
+            self.parent.sideDock.bookmarks.add_bookmark()
+        except Exception as e:
+            logger.warning(f'Could not add bookmark: {e}')
+        self.return_focus()
+
+    def toggle_fullscreen(self):
+        self.hide()
+        self.parent.go_fullscreen()  # toggles
+
+    def go_to_library(self):
+        self.hide()
+        if self.parent.is_fullscreen:
+            self.parent.exit_fullscreen()
+        self.main_window.tabWidget.setCurrentIndex(0)
 
     def return_focus(self):
         # The NavBar needs to be hidden after clicking

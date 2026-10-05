@@ -21,10 +21,12 @@ class TouchNavigator(QtCore.QObject):
     SWIPE_MIN_PX = 80
     SWIPE_MAX_MS = 700
     DOUBLE_TAP_MS = 350
+    LONG_PRESS_MS = 650        # press-and-hold = context menu (touch has no right button)
     EDGE_FRACTION = 0.30       # width of the previous/next tap zones
 
     def __init__(self, view, on_next, on_previous, on_centre_tap=None,
-                 on_double_tap=None, enabled=None, right_to_left=None):
+                 on_double_tap=None, enabled=None, right_to_left=None,
+                 on_long_press=None):
         """
         view:            QAbstractScrollArea whose viewport receives the gestures
         on_next/previous: page turn callbacks
@@ -32,6 +34,7 @@ class TouchNavigator(QtCore.QObject):
         on_double_tap:   double tap in the middle zone (e.g. toggle fullscreen)
         enabled:         callable -> bool; gestures are ignored when False
         right_to_left:   callable -> bool; swaps the edge zones (manga mode)
+        on_long_press:   callable(pos) for press-and-hold (e.g. open the context menu)
         """
         super().__init__(view)
         self.view = view
@@ -41,6 +44,8 @@ class TouchNavigator(QtCore.QObject):
         self.on_double_tap = on_double_tap
         self.enabled = enabled or (lambda: True)
         self.right_to_left = right_to_left or (lambda: False)
+        self.on_long_press = on_long_press
+        self._long_press_fired = False
 
         self._press_pos = None
         self._press_time = 0.0
@@ -52,6 +57,11 @@ class TouchNavigator(QtCore.QObject):
         self._centre_timer.setInterval(self.DOUBLE_TAP_MS)
         self._centre_timer.timeout.connect(self._fire_centre_tap)
 
+        self._long_press_timer = QtCore.QTimer(self)
+        self._long_press_timer.setSingleShot(True)
+        self._long_press_timer.setInterval(self.LONG_PRESS_MS)
+        self._long_press_timer.timeout.connect(self._fire_long_press)
+
         view.viewport().installEventFilter(self)
 
     # ------------------------------------------------------------------
@@ -59,16 +69,35 @@ class TouchNavigator(QtCore.QObject):
     def eventFilter(self, obj, event):
         etype = event.type()
         if etype == QtCore.QEvent.MouseButtonPress:
+            self._long_press_fired = False
             if event.button() == QtCore.Qt.LeftButton and not event.modifiers():
                 self._press_pos = event.pos()
                 self._press_time = time.monotonic()
+                if self.on_long_press and self.enabled():
+                    self._long_press_timer.start()
             else:
                 self._press_pos = None
+        elif etype == QtCore.QEvent.MouseMove:
+            # Moving the finger cancels a pending long press
+            if self._press_pos is not None and self._long_press_timer.isActive():
+                moved = (event.pos() - self._press_pos).manhattanLength()
+                if moved > self.TAP_MAX_MOVE_PX:
+                    self._long_press_timer.stop()
         elif etype == QtCore.QEvent.MouseButtonRelease:
-            if self._press_pos is not None and event.button() == QtCore.Qt.LeftButton:
+            self._long_press_timer.stop()
+            if (self._press_pos is not None and event.button() == QtCore.Qt.LeftButton
+                    and not self._long_press_fired):
                 self._on_release(event.pos())
             self._press_pos = None
         return False  # never swallow: panning, selection and context menus keep working
+
+    def _fire_long_press(self):
+        if self._press_pos is None:
+            return
+        self._long_press_fired = True
+        pos = self._press_pos
+        if self.on_long_press:
+            self.on_long_press(pos)
 
     def _on_release(self, pos):
         if not self.enabled():

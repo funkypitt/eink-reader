@@ -325,6 +325,11 @@ class MainUI(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.tableView.customContextMenuRequested.connect(
             self.generate_library_context_menu)
 
+        # Touch-sized chrome (toolbars, tabs, menus, finger scrolling,
+        # single tap opens a book). EINK_READER_TOUCH_UI=0 disables it.
+        from lector.touch_ui import apply_touch_ui
+        apply_touch_ui(self)
+
         # Keyboard shortcuts
         self.ksDistractionFree = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+D'), self)
         self.ksDistractionFree.setContext(QtCore.Qt.ApplicationShortcut)

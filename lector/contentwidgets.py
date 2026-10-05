@@ -92,7 +92,8 @@ class PliantQGraphicsView(QtWidgets.QGraphicsView):
             self, self.page_forward, self.page_backward,
             on_centre_tap=self.show_nav_bar,
             on_double_tap=self.toggle_fullscreen,
-            right_to_left=lambda: bool(self.main_window.settings['manga_mode']))
+            right_to_left=lambda: bool(self.main_window.settings['manga_mode']),
+            on_long_press=self.customContextMenuRequested.emit)
 
     def page_forward(self):
         """Next page: scroll if the (zoomed) page is taller than the view, else next page."""
@@ -539,7 +540,8 @@ class PliantQTextBrowser(QtWidgets.QTextBrowser):
             self, self.page_forward, self.page_backward,
             on_centre_tap=self.show_nav_bar,
             on_double_tap=self.toggle_fullscreen,
-            enabled=lambda: not self.annotation_mode and not self.textCursor().hasSelection())
+            enabled=lambda: not self.annotation_mode and not self.textCursor().hasSelection(),
+            on_long_press=self.customContextMenuRequested.emit)
 
     def page_forward(self):
         if self.text_mode in ('singlePage', 'doublePage'):

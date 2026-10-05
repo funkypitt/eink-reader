@@ -21,7 +21,11 @@ Made for the eInk in portrait tablet mode, where there is no keyboard:
 | Tap the centre | Show the navigation bar for a moment |
 | Double-tap the centre | Toggle fullscreen (same as **F** / **Esc**) |
 
+| Press and hold | Context menu (zoom, view options, save page…) |
+
 Page turns are instantaneous (no double-tap delay on the edges). Manga mode mirrors the edge zones. Gestures never interfere with text selection, annotation placement or the right-click menu, and they work with a mouse too.
+
+The chrome is sized for fingers as well: 48 px toolbar buttons and tabs, large menus and combo boxes, finger scrolling with inertia in the library and tables of contents, **one tap opens a book** in the library, and the navigation bar that appears on a centre tap is a full-width strip with *library · bookmark · previous / chapter / next · fullscreen*. Set `EINK_READER_TOUCH_UI=0` to get the compact desktop sizing back.
 
 ## Supported formats
 
