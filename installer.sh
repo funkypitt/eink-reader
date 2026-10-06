@@ -76,7 +76,7 @@ check_root() {
 install_deps() {
     step "Installing system dependencies"
 
-    local pkgs="python3 python3-pyqt5 python3-lxml python3-bs4 python3-xmltodict"
+    local pkgs="python3 python3-pyqt5 python3-lxml python3-bs4 python3-xmltodict python3-dbus"
 
     if ! apt-get update -qq >> "$LOG_FILE" 2>&1; then
         error "apt-get update failed. Check your internet connection and sources."
