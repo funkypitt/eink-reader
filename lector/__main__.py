@@ -1115,7 +1115,22 @@ def main():
         translations_out_string = ' (No translations found)'
     print(f'Locale: {QtCore.QLocale.system().name()}' + translations_out_string)
 
+    # A running reader is told what to do instead of starting a second copy
+    from lector import ipc
+    other = ipc.running_instance()
+    if other is not None:
+        try:
+            if '--fullscreen' in sys.argv:
+                other.Fullscreen()
+            else:
+                other.Show()
+            print('eInk Reader already running — forwarded the request to it')
+            return
+        except Exception as e:
+            print(f'Running reader did not answer ({e}); starting a new one')
+
     form = MainUI()
+    form.ipc = ipc.start_service(form)
     form.show()
     form.resizeEvent()
     app.exec_()

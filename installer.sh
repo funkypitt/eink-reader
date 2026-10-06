@@ -198,6 +198,36 @@ install_desktop() {
     info "Desktop entry and icon installed."
 }
 
+
+# ─── Default application for books (optional) ───────────────────────────────
+
+set_default_reader() {
+    # Defaults live in the *user's* ~/.config/mimeapps.list, so this must run
+    # as the invoking user, not as root.
+    local user="${SUDO_USER:-}"
+    if [ -z "$user" ] || [ "$user" = "root" ]; then
+        info "Not run through sudo from a user session — skipping default-app setup."
+        return
+    fi
+    echo ""
+    echo -e "${CYAN}─── Default application ───${NC}"
+    read -rp "Make eInk Reader the default application for PDF and EPUB files? [y/N] " answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        info "Default application unchanged."
+        return
+    fi
+    local types="application/pdf application/epub+zip application/x-mobipocket-ebook application/x-cbz application/x-cbr application/vnd.comicbook+zip application/vnd.comicbook-rar"
+    local uid; uid=$(id -u "$user")
+    if runuser -u "$user" -- env HOME="$(getent passwd "$user" | cut -d: -f6)" \
+            XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" \
+            xdg-mime default eink-reader.desktop $types; then
+        info "eInk Reader is now the default for PDF, EPUB, MOBI and comic-book files (user: ${user})."
+        info "Undo any time from Settings → Default applications, or: xdg-mime default <other>.desktop application/pdf"
+    else
+        warn "Could not set the default application (xdg-mime failed)."
+    fi
+}
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 main() {
@@ -221,6 +251,7 @@ main() {
     install_deps
     install_app
     install_desktop
+    set_default_reader
     check_deps
 
     echo ""

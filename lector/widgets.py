@@ -398,6 +398,9 @@ class Tab(QtWidgets.QWidget):
         self.contentView.setWindowFlags(QtCore.Qt.Window)
         self.contentView.setWindowState(QtCore.Qt.WindowFullScreen)
         self.contentView.show()
+        self.contentView.raise_()
+        self.contentView.activateWindow()
+        self.contentView.setFocus()
         self.main_window.hide()
 
         if not self.are_we_doing_images_only:
@@ -424,6 +427,7 @@ class Tab(QtWidgets.QWidget):
         self.contentView.setWindowFlags(QtCore.Qt.Widget)
         self.contentView.setWindowState(QtCore.Qt.WindowNoState)
         self.contentView.show()
+        self.main_window.activateWindow()
         self.is_fullscreen = False
 
         if not self.are_we_doing_images_only:

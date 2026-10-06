@@ -56,7 +56,7 @@ The chrome is sized for fingers as well: 48 px toolbar buttons and tabs, large m
 sudo bash installer.sh
 ```
 
-This handles everything: apt packages, pip packages (PyMuPDF), app files to `/opt/eink-reader`, launcher in `/usr/local/bin/eink-reader`, desktop entry, and icon.
+This handles everything: apt packages, pip packages (PyMuPDF), app files to `/opt/eink-reader`, launcher in `/usr/local/bin/eink-reader`, desktop entry, and icon. It then offers to make eInk Reader the default application for PDF, EPUB, MOBI and comic-book files (for the user who ran `sudo`; undo any time in Settings → Default applications).
 
 To uninstall:
 ```bash
@@ -77,6 +77,14 @@ python3 -m lector
 
 # Or install
 pip3 install .
+```
+
+### Control interface (D-Bus)
+
+A running reader exposes `org.eink.Reader` on the session bus (`/org/eink/Reader`): `Fullscreen`, `ExitFullscreen`, `ToggleFullscreen`, `NextPage`, `PreviousPage`, `Show`, `Quit`, `GetState`. A second `eink-reader` launch forwards to the running instance instead of starting another copy (`--fullscreen` → `Fullscreen`). Tinta4PlusU uses this to open the book fullscreen when tablet reader mode starts and to leave fullscreen when it ends.
+
+```bash
+gdbus call --session --dest org.eink.Reader --object-path /org/eink/Reader --method org.eink.Reader.NextPage
 ```
 
 ### Command line
