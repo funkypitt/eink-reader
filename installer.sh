@@ -93,8 +93,10 @@ install_deps() {
 
     # Install pip packages not available in apt
     step "Installing Python pip packages (PyMuPDF)"
-    local pip_cmd="pip3"
-    if ! command -v pip3 &>/dev/null; then
+    # System interpreter explicitly: the launcher runs /usr/bin/python3 and
+    # needs the packages there, whatever python3 is first in PATH.
+    local pip_cmd="/usr/bin/python3 -m pip"
+    if ! /usr/bin/python3 -m pip --version &>/dev/null; then
         apt-get install -y -qq python3-pip >> "$LOG_FILE" 2>&1
     fi
     if $pip_cmd install --break-system-packages pymupdf >> "$LOG_FILE" 2>&1; then
@@ -103,7 +105,7 @@ install_deps() {
         info "pip packages installed (pymupdf)."
     else
         warn "pip install failed for pymupdf. PDF support will not be available."
-        warn "You can install it manually: pip3 install pymupdf"
+        warn "You can install it manually: /usr/bin/python3 -m pip install pymupdf"
         warn "See: ${LOG_FILE}"
     fi
 }
@@ -114,13 +116,13 @@ check_deps() {
     info "Verifying dependencies..."
     local missing=()
 
-    if ! command -v python3 &>/dev/null; then
+    if [ ! -x /usr/bin/python3 ]; then
         missing+=("python3 (apt)")
     else
         for mod_pkg in "PyQt5:python3-pyqt5" "lxml:python3-lxml" "bs4:python3-bs4" "xmltodict:python3-xmltodict" "fitz:pymupdf (pip3)"; do
             local mod="${mod_pkg%%:*}"
             local pkg="${mod_pkg##*:}"
-            if ! python3 -c "import $mod" 2>/dev/null; then
+            if ! /usr/bin/python3 -c "import $mod" 2>/dev/null; then
                 missing+=("$pkg")
             fi
         done
@@ -166,7 +168,7 @@ install_app() {
     cat > "${BIN_DIR}/eink-reader" << 'WRAPPER'
 #!/bin/bash
 export PYTHONPATH="/opt/eink-reader:${PYTHONPATH}"
-exec python3 -m lector "$@"
+exec /usr/bin/python3 -m lector "$@"
 WRAPPER
     chmod 755 "${BIN_DIR}/eink-reader"
 
