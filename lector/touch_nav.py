@@ -27,7 +27,7 @@ class TouchNavigator(QtCore.QObject):
     SWIPE_MIN_PX = 80
     SWIPE_MAX_MS = 700
     DOUBLE_TAP_MS = 350
-    LONG_PRESS_MS = 650        # press-and-hold = context menu (touch has no right button)
+    LONG_PRESS_MS = 750        # press-and-hold = context menu (touch has no right button)
     EDGE_FRACTION = 0.30       # width of the previous/next tap zones
 
     def __init__(self, view, on_next, on_previous, on_centre_tap=None,
@@ -57,9 +57,6 @@ class TouchNavigator(QtCore.QObject):
         self._press_time = 0.0
         self._last_tap_pos = None
         self._last_tap_time = 0.0
-        # Once native touch events are seen, the mouse events Qt synthesises
-        # from them are ignored so a tap is not counted twice.
-        self._touch_seen = False
 
         self._centre_timer = QtCore.QTimer(self)
         self._centre_timer.setSingleShot(True)
@@ -71,60 +68,17 @@ class TouchNavigator(QtCore.QObject):
         self._long_press_timer.setInterval(self.LONG_PRESS_MS)
         self._long_press_timer.timeout.connect(self._fire_long_press)
 
-        # Receive native touch events as well as the mouse events Qt
-        # synthesises from them (the filter never accepts them, so the view
-        # keeps getting its synthesised mouse events for panning/selection).
-        view.viewport().setAttribute(QtCore.Qt.WA_AcceptTouchEvents, True)
+        # Work from the mouse events Qt synthesises for touch. (Listening to
+        # native QTouchEvents was tried: Qt delivers TouchBegin, the view
+        # ignores it, and the rest of the sequence arrives as mouse events
+        # only — so the release was never seen and the long-press timer
+        # opened the context menu on every edge tap.)
         view.viewport().installEventFilter(self)
 
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _first_touch_pos(event):
-        points = event.touchPoints()
-        if not points:
-            return None
-        return points[0].pos().toPoint()
-
     def eventFilter(self, obj, event):
         etype = event.type()
-
-        # --- native touch ---------------------------------------------
-        if etype == QtCore.QEvent.TouchBegin:
-            if not self._touch_seen:
-                self._debug('native touch events are being delivered')
-            self._touch_seen = True
-            self._long_press_fired = False
-            pos = self._first_touch_pos(event)
-            if pos is not None and len(event.touchPoints()) == 1:
-                self._press_pos = pos
-                self._press_time = time.monotonic()
-                if self.on_long_press and self.enabled():
-                    self._long_press_timer.start()
-            return False
-        if etype == QtCore.QEvent.TouchUpdate:
-            if len(event.touchPoints()) > 1:
-                self._press_pos = None          # pinch / two fingers: not ours
-                self._long_press_timer.stop()
-            elif self._press_pos is not None and self._long_press_timer.isActive():
-                pos = self._first_touch_pos(event)
-                if pos is not None and (pos - self._press_pos).manhattanLength() > self.TAP_MAX_MOVE_PX:
-                    self._long_press_timer.stop()
-            return False
-        if etype in (QtCore.QEvent.TouchEnd, QtCore.QEvent.TouchCancel):
-            self._long_press_timer.stop()
-            pos = self._first_touch_pos(event)
-            if (etype == QtCore.QEvent.TouchEnd and self._press_pos is not None
-                    and pos is not None and not self._long_press_fired):
-                self._on_release(pos)
-            self._press_pos = None
-            return False
-
-        # --- mouse (real, or synthesised from touch when no touch was seen) ---
-        if self._touch_seen and etype in (QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseMove,
-                                          QtCore.QEvent.MouseButtonRelease):
-            if event.source() != QtCore.Qt.MouseEventNotSynthesized:
-                return False  # already handled as a touch sequence
 
         if etype == QtCore.QEvent.MouseButtonPress:
             self._long_press_fired = False
@@ -169,7 +123,7 @@ class TouchNavigator(QtCore.QObject):
         dy = pos.y() - self._press_pos.y()
         elapsed_ms = (time.monotonic() - self._press_time) * 1000.0
         self._debug(f'release at {pos.x()},{pos.y()} dx={dx} dy={dy} {elapsed_ms:.0f}ms '
-                    f'(touch_seen={self._touch_seen}, viewport {self.view.viewport().width()}x{self.view.viewport().height()})')
+                    f'(viewport {self.view.viewport().width()}x{self.view.viewport().height()})')
 
         # Horizontal swipe: finger moves left -> next page (as on a Kindle)
         if abs(dx) >= self.SWIPE_MIN_PX and abs(dx) > 1.5 * abs(dy) and elapsed_ms <= self.SWIPE_MAX_MS:
