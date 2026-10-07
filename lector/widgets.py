@@ -136,8 +136,8 @@ class Tab(QtWidgets.QWidget):
             self.contentView.setVerticalScrollBarPolicy(
                 QtCore.Qt.ScrollBarAsNeeded)
 
-        # Create a NavBar widget
-        if self.main_window.settings['nav_bar']:
+        # Create a NavBar widget (touch UI forces it in memory, see touch_ui.py)
+        if self.main_window.settings['nav_bar'] or getattr(self.main_window, 'touch_nav_bar', False):
             self.navBar = PliantNavBarWidget(
                 self.main_window, self.contentView, self)
             self.navBar.setFloating(True)

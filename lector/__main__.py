@@ -498,7 +498,7 @@ class MainUI(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         dialog_prompt = self._translate('Main_UI', 'Add books to database')
         ebooks_string = self._translate('Main_UI', 'eBooks')
         opened_files = QtWidgets.QFileDialog.getOpenFileNames(
-            self, dialog_prompt, self.settings['last_open_path'],
+            self.dialog_parent(), dialog_prompt, self.settings['last_open_path'],
             f'{ebooks_string}({self.available_parsers})')
 
         if not opened_files[0]:
@@ -720,6 +720,15 @@ class MainUI(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         # It's going to do position tracking
         current_tab = self.tabWidget.currentWidget()
         current_tab.set_content(required_position, True, True)
+
+    def dialog_parent(self):
+        """A *visible* top-level to attach dialogs to: in fullscreen the main
+        window is hidden and a dialog parented to it would be invisible (the
+        app then looks frozen behind a modal nobody can see)."""
+        tab = self.tabWidget.currentWidget()
+        if tab is not None and getattr(tab, 'is_fullscreen', False):
+            return tab.contentView
+        return self
 
     def library_doubleclick(self, index):
         sender = self.sender().objectName()
@@ -1103,6 +1112,7 @@ def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName('Lector')  # This is needed for QStandardPaths
                                       # and my own hubris
+    app.setDesktopFileName('eink-reader')  # dock/taskbar icon matches the launcher
 
     # Internationalization support
     translator = QtCore.QTranslator()
@@ -1115,22 +1125,36 @@ def main():
         translations_out_string = ' (No translations found)'
     print(f'Locale: {QtCore.QLocale.system().name()}' + translations_out_string)
 
-    # A running reader is told what to do instead of starting a second copy
+    # A running reader is told what to do; a second copy is never started
+    # while the name is owned (a busy reader just gets the request later).
     from lector import ipc
+
+    def forward(other):
+        files = [os.path.abspath(a) for a in sys.argv[1:] if not a.startswith('-') and os.path.exists(a)]
+        try:
+            if files:
+                other.OpenFiles(files, timeout=3)   # e.g. a double-click in the file manager
+            if '--fullscreen' in sys.argv:
+                other.Fullscreen(timeout=3)
+            elif not files:
+                other.Show(timeout=3)
+            print('eInk Reader already running — forwarded the request to it')
+        except Exception as e:
+            print(f'eInk Reader already running (it did not answer in time: {e}); not starting another copy')
+
     other = ipc.running_instance()
     if other is not None:
-        try:
-            if '--fullscreen' in sys.argv:
-                other.Fullscreen()
-            else:
-                other.Show()
-            print('eInk Reader already running — forwarded the request to it')
+        forward(other)
+        return
+    bus_name = ipc.claim_name()          # claimed *before* the slow start-up
+    if ipc.HAS_DBUS and bus_name is None:
+        other = ipc.running_instance()   # lost the race to another copy
+        if other is not None:
+            forward(other)
             return
-        except Exception as e:
-            print(f'Running reader did not answer ({e}); starting a new one')
 
     form = MainUI()
-    form.ipc = ipc.start_service(form)
+    form.ipc = ipc.start_service(form, bus_name)
     form.show()
     form.resizeEvent()
     app.exec_()

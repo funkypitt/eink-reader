@@ -85,7 +85,9 @@ class TouchNavigator(QtCore.QObject):
             if event.button() == QtCore.Qt.LeftButton and not event.modifiers():
                 self._press_pos = event.pos()
                 self._press_time = time.monotonic()
-                if self.on_long_press and self.enabled():
+                # Decide now: a tap that clears a text selection must not also turn the page
+                self._press_enabled = self.enabled()
+                if self.on_long_press and self._press_enabled:
                     self._long_press_timer.start()
             else:
                 self._press_pos = None
@@ -108,15 +110,22 @@ class TouchNavigator(QtCore.QObject):
             return
         self._long_press_fired = True
         pos = self._press_pos
+        # The popup menu will swallow the real release; give the view a release
+        # now so QGraphicsView's hand-drag state does not stay engaged.
+        from PyQt5 import QtGui, QtWidgets
+        vp = self.view.viewport()
+        fake = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonRelease, QtCore.QPointF(pos), QtCore.QPointF(vp.mapToGlobal(pos)),
+                                 QtCore.Qt.LeftButton, QtCore.Qt.NoButton, QtCore.Qt.NoModifier)
+        QtWidgets.QApplication.sendEvent(vp, fake)
         if self.on_long_press:
-            self.on_long_press(pos)
+            QtCore.QTimer.singleShot(0, lambda: self.on_long_press(pos))
 
     def _debug(self, msg):
         if DEBUG:
             logger.log(60, f'touch: {msg}')
 
     def _on_release(self, pos):
-        if not self.enabled():
+        if not getattr(self, '_press_enabled', True):
             self._debug('release ignored: gestures disabled (selection/annotation)')
             return
         dx = pos.x() - self._press_pos.x()

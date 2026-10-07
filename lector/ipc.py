@@ -46,17 +46,30 @@ def running_instance():
         return None
 
 
-def start_service(main_window):
-    """Export the control interface for this window; returns the service or None."""
+def claim_name():
+    """Own org.eink.Reader *before* the (slow) main window is built.
+
+    Returns the BusName, or None if another reader owns it (never queued, so
+    a second copy can never silently become the service later).
+    """
     if not HAS_DBUS:
-        logger.info('dbus-python not available: reader control interface disabled')
         return None
     try:
-        bus = dbus.SessionBus()
-        if bus.name_has_owner(BUS_NAME):
-            logger.info('Another reader owns %s; control interface not started', BUS_NAME)
-            return None
-        return _ReaderService(main_window, bus)
+        return dbus.service.BusName(BUS_NAME, dbus.SessionBus(), do_not_queue=True)
+    except dbus.exceptions.NameExistsException:
+        return None
+    except Exception as e:
+        logger.warning('Could not claim %s: %s', BUS_NAME, e)
+        return None
+
+
+def start_service(main_window, bus_name):
+    """Export the control interface on a name claimed with claim_name()."""
+    if not HAS_DBUS or bus_name is None:
+        logger.info('Reader control interface disabled (no D-Bus name)')
+        return None
+    try:
+        return _ReaderService(main_window, bus_name)
     except Exception as e:
         logger.warning('Reader control interface unavailable: %s', e)
         return None
@@ -64,22 +77,36 @@ def start_service(main_window):
 
 if HAS_DBUS:
     class _ReaderService(dbus.service.Object):
-        def __init__(self, main_window, bus):
+        def __init__(self, main_window, bus_name):
             self.main_window = main_window
-            self._owned_name = dbus.service.BusName(BUS_NAME, bus)  # keep a reference
-            super().__init__(self._owned_name, OBJECT_PATH)
+            self._owned_name = bus_name  # keep a reference: Object.__init__ overwrites _name
+            super().__init__(bus_name, OBJECT_PATH)
             logger.info('Reader control interface at %s', BUS_NAME)
 
         # -- helpers ------------------------------------------------------
 
+        def _book_tabs(self):
+            tw = self.main_window.tabWidget
+            return [tw.widget(i) for i in range(1, tw.count())]
+
         def _book_tab(self):
             tab = self.main_window.tabWidget.currentWidget()
-            if tab is None or getattr(tab, 'is_library', True):
-                # Prefer the most recently used book tab if the library is current
-                for i in range(1, self.main_window.tabWidget.count()):
-                    return self.main_window.tabWidget.widget(i)
+            if tab is not None and not getattr(tab, 'is_library', True):
+                return tab
+            # Library is current: the most recently used book
+            tabs = self._book_tabs()
+            if not tabs:
                 return None
-            return tab
+            return max(tabs, key=lambda t: t.metadata.get('last_accessed') or 0)
+
+        def _leave_all_fullscreen(self):
+            """Only one fullscreen top-level at a time; also closes docks that
+            would otherwise make exit_fullscreen() a no-op."""
+            for t in self._book_tabs():
+                if getattr(t, 'is_fullscreen', False):
+                    for dock in (t.annotationNoteDock, t.sideDock):
+                        dock.setVisible(False)
+                    t.exit_fullscreen()
 
         def _later(self, fn):
             QtCore.QTimer.singleShot(0, fn)
@@ -99,19 +126,17 @@ if HAS_DBUS:
         def Fullscreen(self):
             def go():
                 tab = self._book_tab()
-                if tab is None:
+                if tab is None or tab.is_fullscreen:
                     return
+                self._leave_all_fullscreen()
                 self.main_window.tabWidget.setCurrentWidget(tab)
-                if not tab.is_fullscreen:
-                    tab.go_fullscreen()
+                tab.go_fullscreen()
             self._later(go)
 
         @dbus.service.method(IFACE)
         def ExitFullscreen(self):
             def leave():
-                tab = self._book_tab()
-                if tab is not None and tab.is_fullscreen:
-                    tab.exit_fullscreen()
+                self._leave_all_fullscreen()
                 self.main_window.show()
                 self.main_window.activateWindow()
             self._later(leave)
@@ -135,6 +160,23 @@ if HAS_DBUS:
             tab = self._book_tab()
             if tab is not None:
                 self._later(tab.contentView.page_backward)
+
+        @dbus.service.method(IFACE, in_signature='as')
+        def OpenFiles(self, paths):
+            """Open (and add to the library) files given as absolute paths."""
+            files = [str(p) for p in paths]
+            def do_open():
+                was_fullscreen = any(getattr(t, 'is_fullscreen', False) for t in self._book_tabs())
+                self._leave_all_fullscreen()
+                self.main_window.process_post_hoc_files(files, True)
+                tab = self._book_tab()
+                if was_fullscreen and tab is not None:
+                    tab.go_fullscreen()   # keep the tablet posture: the new book takes over the screen
+                    return
+                self.main_window.show()
+                self.main_window.raise_()
+                self.main_window.activateWindow()
+            self._later(do_open)
 
         @dbus.service.method(IFACE)
         def Show(self):
